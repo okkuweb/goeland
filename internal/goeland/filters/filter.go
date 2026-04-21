@@ -145,27 +145,13 @@ func filterToday(source *goeland.Source, params *filterParams) {
 	source.Entries = source.Entries[:current]
 }
 
-func filterDigestGeneric(source *goeland.Source, level int, useFirstEntryTitle bool) {
+func filterDigestGeneric(source *goeland.Source) {
 	if len(source.Entries) < 1 {
 		return
 	}
 	digest := goeland.Entry{}
-	digest.Title = i18n.Tf("Digest for %s", source.Title)
-	if useFirstEntryTitle && len(source.Entries) > 0 {
-		digest.Title = source.Entries[0].Title
-	}
-	var previousSource *goeland.Source
 	content := ""
 	for _, entry := range source.Entries {
-		if entry.IncludeSourceTitle && previousSource != entry.Source {
-			content += fmt.Sprintf(`<h%d><a href="%s">%s</a></h%d>`, level-1, entry.Source.URL, entry.Source.Title, level-1)
-			previousSource = entry.Source
-		}
-		if entry.IncludeLink {
-			content += fmt.Sprintf(`<h%d><a href="%s">%s</a></h%d>`, level, entry.URL, entry.Title, level)
-		} else {
-			content += fmt.Sprintf("<h%d>%s</h%d>", level, entry.Title, level)
-		}
 		content += entry.Content
 	}
 	h := sha256.New()
@@ -177,21 +163,11 @@ func filterDigestGeneric(source *goeland.Source, level int, useFirstEntryTitle b
 }
 
 func filterDigest(source *goeland.Source, params *filterParams) {
-	args := params.args
-	level := defaultHeaderLevel
-	if len(args) > 0 {
-		level, _ = strconv.Atoi(args[0])
-	}
-	filterDigestGeneric(source, level, false)
+	filterDigestGeneric(source)
 }
 
 func filterCombine(source *goeland.Source, params *filterParams) {
-	args := params.args
-	level := defaultHeaderLevel
-	if len(args) > 0 {
-		level, _ = strconv.Atoi(args[0])
-	}
-	filterDigestGeneric(source, level, true)
+	filterDigestGeneric(source)
 }
 
 func getBaseURL(URL string) (string, error) {
@@ -309,7 +285,8 @@ func filterToc(source *goeland.Source, params *filterParams) {
 	} else {
 		toc.Title = i18n.Tf("Table of Content for %s", source.Title)
 	}
-	content := "<ul>"
+	content := "<h2>" + toc.Title + "</h2>"
+	content += "<ul>"
 	for _, entry := range source.Entries {
 		if entry.IncludeLink {
 			content += fmt.Sprintf(`<li><a href="%s">%s</a></li>`, entry.URL, entry.Title)
@@ -323,7 +300,7 @@ func filterToc(source *goeland.Source, params *filterParams) {
 	toc.UID = fmt.Sprintf("%x", h.Sum(nil))
 	toc.Date = time.Now()
 	toc.Content = content
-	source.Entries = append([]goeland.Entry{toc}, source.Entries...)
+	source.Entries = []goeland.Entry{toc}
 }
 
 func isEndOfSentence(r rune) bool {
@@ -400,6 +377,10 @@ func filterRESkip(source *goeland.Source, params *filterParams) {
 	for _, entry := range source.Entries {
 		if re.Match([]byte(entry.Title)) {
 			log.Debugf("skipping entry with title '%s' due to regex match '%s'", entry.Title, args[0])
+			continue
+		}
+		if re.Match([]byte(entry.URL)) {
+			log.Debugf("skipping entry with URL '%s' due to regex match '%s'", entry.Title, args[0])
 			continue
 		}
 		source.Entries[current] = entry
