@@ -332,6 +332,25 @@ filters = ["reskip([Ss]ponsor.*)"]
 
 ## Specialized Filters
 
+### `delay-request`
+**Description:** Waits before fetching a feed source.
+
+**Usage:**
+```toml
+filters = ["delay-request(60)", "reddit"]
+```
+
+**Parameters:**
+- `seconds`: Number of seconds to wait before fetching the feed
+
+**Behavior:**
+- Runs before HTTP feed fetching starts
+- Useful for sources that require spacing requests, such as Reddit RSS feeds
+- Has no effect after the source has been fetched
+- Applies to HTTP `feed` sources and, when set on a `merge` source, before each HTTP feed sub-source
+
+---
+
 ### `unseen`
 **Description:** Keeps only unseen entries (entries not previously processed).
 

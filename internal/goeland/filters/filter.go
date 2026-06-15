@@ -60,6 +60,7 @@ var filters = map[string]filter{
 	"toc":                {"Create a table of content entry for all the entries (optional: title, will use the Title as a link)", filterToc},
 	"limitwords":         {"Limit the number of words in the entry. Use limitwords(number).", filterLimitWords},
 	"reskip":             {"Skip entries whose titles match a regular expression. Use reskip(regex).", filterRESkip},
+	"delay-request":      {"Wait before fetching a feed source. Use delay-request(seconds).", filterDelayRequest},
 }
 
 // GetFiltersHelp returns a string that contains help for all filters
@@ -73,6 +74,10 @@ func GetFiltersHelp() string {
 }
 func filterAll(source *goeland.Source, params *filterParams) {
 
+}
+
+func filterDelayRequest(source *goeland.Source, params *filterParams) {
+	// Handled before feed fetching by ApplyPreFetchFilters.
 }
 
 func filterNone(source *goeland.Source, params *filterParams) {
@@ -389,20 +394,51 @@ func filterRESkip(source *goeland.Source, params *filterParams) {
 	source.Entries = source.Entries[:current]
 }
 
+func parseFilterSpec(filterName string) (string, []string) {
+	filterShort := filterName
+	args := []string{}
+	if strings.Contains(filterName, "(") {
+		filterShort = strings.Split(filterName, "(")[0]
+		args = strings.Split(strings.ReplaceAll(strings.Split(filterName, "(")[1], ")", ""), ",")
+		for i, arg := range args {
+			args[i] = strings.TrimSpace(arg)
+		}
+	}
+	return filterShort, args
+}
+
+func applyDelayRequest(sourceName string, args []string) {
+	if len(args) != 1 {
+		log.Errorf("delay-request takes exactly one parameter; got %d", len(args))
+		return
+	}
+	seconds, err := strconv.Atoi(args[0])
+	if err != nil || seconds <= 0 {
+		log.Errorf("delay-request requires a positive number of seconds; got %q", args[0])
+		return
+	}
+	delay := time.Duration(seconds) * time.Second
+	log.Infof("Delaying request for source %s by %s", sourceName, delay)
+	time.Sleep(delay)
+}
+
+// ApplyPreFetchFilters applies filters that need to run before a source is fetched.
+func ApplyPreFetchFilters(sourceName string, config config.Provider) {
+	filterNames := config.GetStringSlice(fmt.Sprintf("sources.%s.filters", sourceName))
+	for _, filterName := range filterNames {
+		filterShort, args := parseFilterSpec(filterName)
+		if filterShort == "delay-request" {
+			applyDelayRequest(sourceName, args)
+		}
+	}
+}
+
 // FilterSource filters a source according to the config
 func FilterSource(source *goeland.Source, config config.Provider) {
 	log.Infof("Retrieved %v feeds for source %v", len(source.Entries), source.Name)
 	filterNames := config.GetStringSlice(fmt.Sprintf("sources.%s.filters", source.Name))
 	for _, filterName := range filterNames {
-		filterShort := filterName
-		args := []string{}
-		if strings.Contains(filterName, "(") {
-			filterShort = strings.Split(filterName, "(")[0]
-			args = strings.Split(strings.ReplaceAll(strings.Split(filterName, "(")[1], ")", ""), ",")
-			for i, arg := range args {
-				args[i] = strings.TrimSpace(arg)
-			}
-		}
+		filterShort, args := parseFilterSpec(filterName)
 		if filter, found := filters[filterShort]; found {
 			log.Debugf("Executing %s filter with args: %v", filterShort, args)
 			params := filterParams{args: args, config: config}

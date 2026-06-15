@@ -83,14 +83,6 @@ If you are interested for another platform to be supported, please open a PR or 
 On first run, if it doesn't exist yet, goeland will create a `config.toml` with the default values. You need to adjust the `[email]` section with your SMTP server details.
 The config values can also be set with environment variables (e.g. `GOELAND_EMAIL_PASSWORD_FILE=/path/to/pass`).
 
-To slow down HTTP requests to sources and filters, set `request-delay` to a Go duration string:
-
-```toml
-request-delay = "60s"
-```
-
-This waits between HTTP requests made through goeland's shared HTTP client, such as feed fetching and filters like `retrieve`. It does not apply to `imgur` sources.
-
 ### Sources
 
 Afterwards, fill the `[sources]` and `[pipes]` sections.
@@ -162,6 +154,7 @@ in your config file.
 * sanitize: Sanitize the content of entries (to be used if --unsafe-no-sanitize-filter was passed)
 * toc: Create a special table of content entry containing the titles of all entries. Use `toc(title)` to use the Title as a link
 * limitwords: Limit the number of words in the entry, use like this:  `limitwords(32)`
+* delay-request: Wait before fetching a feed source, use like this: `delay-request(60)`
 
 ### Pipes
 

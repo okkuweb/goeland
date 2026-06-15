@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
-	"time"
 
 	"github.com/slurdge/goeland/version"
 	"github.com/spf13/viper"
@@ -15,8 +13,6 @@ import (
 var userAgent string = "multiple:goeland:" + version.Version + " (commit id:" + version.GitCommit + ") (by /u/goelandrss)"
 var defaultClient http.Client
 var insecureClient http.Client
-var requestDelayMu sync.Mutex
-var lastRequestAt time.Time
 
 func GetHTTPRessourceGeneric(url string, client http.Client) (body []byte, err error) {
 	var request *http.Request
@@ -30,21 +26,6 @@ func GetHTTPRessourceGeneric(url string, client http.Client) (body []byte, err e
 	}
 	request.Header.Set("User-Agent", userAgent)
 	request.Header.Set("Accept", "*/*")
-
-	delay := config.GetDuration("request-delay")
-	if delay > 0 {
-		requestDelayMu.Lock()
-		defer func() {
-			lastRequestAt = time.Now()
-			requestDelayMu.Unlock()
-		}()
-		if !lastRequestAt.IsZero() {
-			wait := delay - time.Since(lastRequestAt)
-			if wait > 0 {
-				time.Sleep(wait)
-			}
-		}
-	}
 
 	resp, err := client.Do(request)
 	if err != nil {

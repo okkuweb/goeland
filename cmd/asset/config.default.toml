@@ -33,11 +33,6 @@
 ## Automatically run the purge command after the run command
 #auto-purge = false
 
-## Request delay
-## Delay between HTTP requests to sources and filters, for example "60s" or "1m".
-## This does not apply to imgur sources.
-#request-delay = "0s"
-
 [email]
 ## Authentication
 host = "smtp.example.com"

@@ -10,6 +10,14 @@ import (
 	"github.com/slurdge/goeland/log"
 )
 
+func isHTTPFeedSource(config config.Provider, sourceName string) bool {
+	if config.GetString(fmt.Sprintf("sources.%s.type", sourceName)) != "feed" {
+		return false
+	}
+	url := config.GetString(fmt.Sprintf("sources.%s.url", sourceName))
+	return strings.HasPrefix(url, "http")
+}
+
 // FetchSource retrieves a source from either a feed, imgur or other sub-sources
 func FetchSource(config config.Provider, sourceName string, parents []string) (*goeland.Source, error) {
 	if !config.IsSet(fmt.Sprintf("sources.%s", sourceName)) {
@@ -26,6 +34,9 @@ func FetchSource(config config.Provider, sourceName string, parents []string) (*
 	case "feed":
 		url := config.GetString(fmt.Sprintf("sources.%s.url", sourceName))
 		allowInsecure := config.GetBool(fmt.Sprintf("sources.%s.allow-insecure", sourceName))
+		if strings.HasPrefix(url, "http") {
+			filters.ApplyPreFetchFilters(sourceName, config)
+		}
 		err = fetchFeed(source, url, !strings.HasPrefix(url, "http"), allowInsecure)
 		if err != nil {
 			log.Errorf("Cannot retrieve feed: %s error: %v", url, err)
@@ -46,6 +57,9 @@ func FetchSource(config config.Provider, sourceName string, parents []string) (*
 		subSourceNames := config.GetStringSlice(fmt.Sprintf("sources.%s.sources", sourceName))
 		for _, subSourceName := range subSourceNames {
 			parents = append(parents, strings.ToLower(sourceName))
+			if isHTTPFeedSource(config, subSourceName) {
+				filters.ApplyPreFetchFilters(sourceName, config)
+			}
 			subSource, err := FetchSource(config, subSourceName, parents)
 			if err != nil {
 				log.Errorf("cannot fetch source: %s (%v)", subSourceName, err)
