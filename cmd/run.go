@@ -62,7 +62,8 @@ func createEmailTemplate(config config.Provider, pipe string) (*template.Templat
 	}
 	if len(templateFilename) > 0 {
 		var err error
-		emailBytes, err = os.ReadFile(templateFilename)
+		path, err := expandPath(templateFilename)
+		emailBytes, err = os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +93,8 @@ func createEmailPool(config config.Provider) (*email.SMTPClient, error) {
 		if len(pass) > 0 {
 			log.Warn("Both password and password_file are set. Using password_file.")
 		}
-		passFileContent, err := os.ReadFile(passFile)
+		path, err := expandPath(passFile)
+		passFileContent, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("error while reading password file: %v", err)
 		}
@@ -412,4 +414,15 @@ func init() {
 	runCmd.Flags().StringVar(&overrideDestination, "destination", "", "Override the email destination for all pipes (email, htmlfile, terminal, null)")
 	bindFlags(runCmd, viper.GetViper())
 	rootCmd.AddCommand(runCmd)
+}
+
+func expandPath(p string) (string, error) {
+	if strings.HasPrefix(p, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		p = filepath.Join(home, strings.TrimPrefix(p, "~"))
+	}
+	return p, nil
 }
